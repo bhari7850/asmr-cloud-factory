@@ -1,0 +1,34 @@
+name: ASMR Factory - Stage 3 Content Selector
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: asmr-stage3-content-selector
+  cancel-in-progress: false
+
+jobs:
+  select-content:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Google API
+        run: npm install googleapis
+
+      - name: Select best 6 ASMR ideas
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+        run: node scripts/stage3-select-content.mjs
