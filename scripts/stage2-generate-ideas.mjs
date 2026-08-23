@@ -5,7 +5,7 @@ import { google } from "googleapis";
 // Gemini Idea Agent
 // ============================================================
 
-const MODEL = "gemini-2.5-flash-lite";
+const MODEL = "gemini-3.5-flash-lite";
 
 const spreadsheetId = process.env.GOOGLE_SHEET_ID;
 const geminiApiKey = process.env.GEMINI_API_KEY;
