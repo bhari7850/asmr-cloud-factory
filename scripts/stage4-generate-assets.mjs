@@ -106,51 +106,19 @@ function number(value) {
 }
 
 function safeFolderName(value) {
-
   return clean(value)
     .replace(/[^a-zA-Z0-9_-]/g, "_")
     .replace(/_+/g, "_")
     .slice(0, 100);
-
-}
-
-function makeSeed(text) {
-
-  let hash = 2166136261;
-
-  for (
-    let index = 0;
-    index < text.length;
-    index++
-  ) {
-
-    hash ^= text.charCodeAt(index);
-
-    hash = Math.imul(
-      hash,
-      16777619
-    );
-
-  }
-
-  const unsigned =
-    hash >>> 0;
-
-  return (
-    unsigned % 2147483646
-  ) + 1;
-
 }
 
 function removeDataUriPrefix(value) {
-
   return String(value)
     .replace(
       /^data:image\/[a-zA-Z0-9.+-]+(?:;charset=[^;,]+)?;base64,/,
       ""
     )
     .trim();
-
 }
 
 // ============================================================
@@ -158,11 +126,9 @@ function removeDataUriPrefix(value) {
 // ============================================================
 
 async function logError(error) {
-
   try {
 
     await sheets.spreadsheets.values.append({
-
       spreadsheetId,
 
       range:
@@ -175,27 +141,15 @@ async function logError(error) {
         "INSERT_ROWS",
 
       requestBody: {
-
         values: [[
-
           new Date().toISOString(),
-
           "STAGE_4_VISUAL_GENERATOR",
-
-          String(
-            error.message || error
-          ),
-
+          String(error.message || error),
           0,
-
           "Retry Cloudflare after verifying free quota",
-
           "FAILED"
-
         ]]
-
       }
-
     });
 
   } catch (loggingError) {
@@ -206,7 +160,6 @@ async function logError(error) {
     );
 
   }
-
 }
 
 // ============================================================
@@ -217,12 +170,10 @@ async function getDailyVideoTarget() {
 
   const response =
     await sheets.spreadsheets.values.get({
-
       spreadsheetId,
 
       range:
         "CONFIG!A2:B50"
-
     });
 
   const rows =
@@ -241,7 +192,6 @@ async function getDailyVideoTarget() {
   return target > 0
     ? target
     : 6;
-
 }
 
 // ============================================================
@@ -252,12 +202,10 @@ async function getPlannedContent() {
 
   const response =
     await sheets.spreadsheets.values.get({
-
       spreadsheetId,
 
       range:
         "CONTENT_DATABASE!A2:V"
-
     });
 
   const rows =
@@ -266,7 +214,6 @@ async function getPlannedContent() {
   return rows
     .map(
       (row, index) => ({
-
         sheetRow:
           index + 2,
 
@@ -299,7 +246,6 @@ async function getPlannedContent() {
 
         score:
           number(row[21])
-
       })
     )
     .filter(
@@ -308,7 +254,6 @@ async function getPlannedContent() {
         item.idea &&
         item.status === "PLANNED"
     );
-
 }
 
 // ============================================================
@@ -321,11 +266,9 @@ function buildScenePrompt(
 ) {
 
   const sceneDirections = {
-
     1: `
 Opening hook frame.
-Show the most visually satisfying subject
-immediately.
+Show the most visually satisfying subject immediately.
 Pristine arrangement before the main action.
 Strong central focal point.
 Instantly understandable at mobile size.
@@ -349,7 +292,6 @@ background and visual identity so the
 finished video can transition back toward
 the beginning smoothly.
 `
-
   };
 
   const prompt = `
@@ -428,22 +370,18 @@ specifically for satisfying ASMR content.
     .replace(/\s+/g, " ")
     .trim();
 
-  // Cloudflare currently allows max 2048 chars.
+  // Keep prompt within model/API limits.
   return prompt.slice(
     0,
     2048
   );
-
 }
 
 // ============================================================
 // CLOUDFLARE IMAGE GENERATION
 // ============================================================
 
-async function callCloudflare(
-  prompt,
-  seed
-) {
+async function callCloudflare(prompt) {
 
   const url =
     "https://api.cloudflare.com/client/v4/accounts/" +
@@ -469,31 +407,21 @@ async function callCloudflare(
       await fetch(
         url,
         {
-
           method: "POST",
 
           headers: {
-
             "Authorization":
               `Bearer ${apiToken}`,
 
             "Content-Type":
               "application/json"
-
           },
 
           body:
             JSON.stringify({
-
               prompt,
-
-              steps:
-                STEPS,
-
-              seed
-
+              steps: STEPS
             })
-
         }
       );
 
@@ -505,18 +433,14 @@ async function callCloudflare(
       let data;
 
       try {
-
         data =
           JSON.parse(
             responseText
           );
-
       } catch {
-
         throw new Error(
           "Cloudflare returned invalid JSON"
         );
-
       }
 
       if (
@@ -537,11 +461,9 @@ async function callCloudflare(
         data?.image;
 
       if (!rawBase64) {
-
         throw new Error(
           "Cloudflare returned no image"
         );
-
       }
 
       const cleanedBase64 =
@@ -558,15 +480,12 @@ async function callCloudflare(
       if (
         buffer.length < 1000
       ) {
-
         throw new Error(
           "Generated image is unexpectedly small"
         );
-
       }
 
       return buffer;
-
     }
 
     console.error(
@@ -596,20 +515,17 @@ async function callCloudflare(
       await sleep(wait);
 
       continue;
-
     }
 
     throw new Error(
       `Cloudflare HTTP ${response.status}: ` +
       responseText
     );
-
   }
 
   throw new Error(
     "Cloudflare retry limit reached"
   );
-
 }
 
 // ============================================================
@@ -669,24 +585,14 @@ async function generateContentAssets(
         sceneNumber
       );
 
-    const seed =
-      makeSeed(
-        `${item.contentId}-${sceneNumber}`
-      );
-
     console.log("");
     console.log(
       `Generating scene ${sceneNumber}/3`
     );
 
-    console.log(
-      `Seed: ${seed}`
-    );
-
     const imageBuffer =
       await callCloudflare(
-        prompt,
-        seed
+        prompt
       );
 
     const fileName =
@@ -730,7 +636,6 @@ async function generateContentAssets(
     );
 
     assets.push({
-
       assetId,
 
       contentId:
@@ -745,8 +650,6 @@ async function generateContentAssets(
       scene:
         sceneNumber,
 
-      seed,
-
       prompt,
 
       file:
@@ -754,16 +657,13 @@ async function generateContentAssets(
 
       bytes:
         imageBuffer.length
-
     });
 
-    // Small gap between free API calls.
-    await sleep(800);
-
+    // Small pause between API calls.
+    await sleep(1000);
   }
 
   return assets;
-
 }
 
 // ============================================================
@@ -774,12 +674,10 @@ async function getExistingAssetIds() {
 
   const response =
     await sheets.spreadsheets.values.get({
-
       spreadsheetId,
 
       range:
         "ASSET_LICENSE!A2:A"
-
     });
 
   const rows =
@@ -792,7 +690,6 @@ async function getExistingAssetIds() {
       )
       .filter(Boolean)
   );
-
 }
 
 // ============================================================
@@ -823,40 +720,26 @@ async function saveAssetLicenseRecords(
     );
 
     return;
-
   }
 
   const rows =
     newAssets.map(
       asset => [
-
         asset.assetId,
-
         asset.contentId,
-
         "AI_GENERATED_IMAGE",
-
         "Cloudflare Workers AI - FLUX.1 Schnell",
-
         CLOUDFLARE_MODEL_URL,
-
-        "BFL FLUX Terms of Service",
-
+        "Provider Terms",
         "YES - SUBJECT TO PROVIDER TERMS",
-
         "NO",
-
         "",
-
         BFL_TERMS_URL,
-
         "APPROVED"
-
       ]
     );
 
   await sheets.spreadsheets.values.append({
-
     spreadsheetId,
 
     range:
@@ -871,13 +754,11 @@ async function saveAssetLicenseRecords(
     requestBody: {
       values: rows
     }
-
   });
 
   console.log(
     `Asset license rows added: ${rows.length}`
   );
-
 }
 
 // ============================================================
@@ -891,36 +772,29 @@ async function markContentAssetsReady(
   const data =
     contentItems.map(
       item => ({
-
         range:
           `CONTENT_DATABASE!K${item.sheetRow}`,
 
         values: [
           ["ASSETS_READY"]
         ]
-
       })
     );
 
   await sheets.spreadsheets.values.batchUpdate({
-
     spreadsheetId,
 
     requestBody: {
-
       valueInputOption:
         "RAW",
 
       data
-
     }
-
   });
 
   console.log(
     `Content rows updated: ${contentItems.length}`
   );
-
 }
 
 // ============================================================
@@ -931,12 +805,10 @@ async function updateSystemStatus() {
 
   const response =
     await sheets.spreadsheets.values.get({
-
       spreadsheetId,
 
       range:
         "CONFIG!A2:B50"
-
     });
 
   const rows =
@@ -958,14 +830,12 @@ async function updateSystemStatus() {
     );
 
     return;
-
   }
 
   const sheetRow =
     index + 2;
 
   await sheets.spreadsheets.values.update({
-
     spreadsheetId,
 
     range:
@@ -975,15 +845,11 @@ async function updateSystemStatus() {
       "RAW",
 
     requestBody: {
-
       values: [
         ["VISUAL_ASSETS_READY"]
       ]
-
     }
-
   });
-
 }
 
 // ============================================================
@@ -1003,7 +869,6 @@ function saveManifest(
   );
 
   const manifest = {
-
     createdAt:
       new Date().toISOString(),
 
@@ -1025,7 +890,6 @@ function saveManifest(
     content:
       selectedContent.map(
         item => ({
-
           contentId:
             item.contentId,
 
@@ -1037,12 +901,10 @@ function saveManifest(
 
           score:
             item.score
-
         })
       ),
 
     assets
-
   };
 
   const manifestFile =
@@ -1080,7 +942,6 @@ function saveManifest(
     ),
     summary
   );
-
 }
 
 // ============================================================
@@ -1132,11 +993,8 @@ async function main() {
       `Expected at least ${dailyTarget} PLANNED ` +
       `videos but found ${planned.length}.`
     );
-
   }
 
-  // Prefer strongest planned concepts if there
-  // are ever more than the daily target.
   const selected =
     [...planned]
       .sort(
@@ -1155,21 +1013,17 @@ async function main() {
 
   selected.forEach(
     (item, index) => {
-
       console.log(
         `${index + 1}. ` +
         `[${item.score}] ` +
         `${item.category} - ${item.idea}`
       );
-
     }
   );
 
-  // ----------------------------------------------------------
-  // Generate every image first.
-  // Google Sheets statuses are NOT changed until all
-  // required images have successfully completed.
-  // ----------------------------------------------------------
+  // ==========================================================
+  // GENERATE ALL IMAGES FIRST
+  // ==========================================================
 
   const allAssets = [];
 
@@ -1192,7 +1046,6 @@ async function main() {
     allAssets.push(
       ...assets
     );
-
   }
 
   const expectedImages =
@@ -1207,7 +1060,6 @@ async function main() {
       `Expected ${expectedImages} images ` +
       `but generated ${allAssets.length}.`
     );
-
   }
 
   saveManifest(
@@ -1215,7 +1067,10 @@ async function main() {
     allAssets
   );
 
-  // Persist Sheets data only after all images succeed.
+  // ==========================================================
+  // ONLY UPDATE SHEETS AFTER EVERYTHING SUCCEEDS
+  // ==========================================================
+
   await saveAssetLicenseRecords(
     allAssets
   );
@@ -1262,7 +1117,6 @@ async function main() {
   console.log(
     "Paid service requested: NO"
   );
-
 }
 
 // ============================================================
@@ -1286,6 +1140,5 @@ main().catch(
     );
 
     process.exit(1);
-
   }
 );
